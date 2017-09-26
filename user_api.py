@@ -4,7 +4,16 @@ from flask_restful import reqparse
 from flask.ext.mysql import MySQL
 
 app = Flask(__name__)
+mysql = MySQL()
+
+# MySQL configurations
+app.config['MYSQL_DATABASE_USER'] = 'root'
+app.config['MYSQL_DATABASE_PASSWORD'] = 'MyNewPass'
+app.config['MYSQL_DATABASE_DB'] = 'ProjectGallery'
+app.config['MYSQL_DATABASE_HOST'] = 'localhost'
+
 api = Api(app)
+mysql.init_app(app)
 
 class CreateUser(Resource):
     def post(self):
@@ -19,7 +28,20 @@ class CreateUser(Resource):
             _userEmail = args['email']
             _userPassword = args['password']
 
-            return {'Email': args['email'], 'Password': args['password']}
+            # connect to database
+            conn = mysql.connect()
+            # MySQL cursor to interact with database
+            cursor = conn.cursor()
+            # Calling the stored procedure
+            cursor.callproc('spCreateUser',(_userEmail,_userPassword))
+            data = cursor.fetchall()
+
+            # Returning successful creation message or error
+            if len(data) is 0:
+               conn.commit()
+               return {'StatusCode':'200','Message': 'User creation success'}
+            else:
+               return {'StatusCode':'1000','Message': str(data[0])}
 
         except Exception as e:
             return {'error': str(e)}
